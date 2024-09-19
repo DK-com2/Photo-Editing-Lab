@@ -4,6 +4,8 @@ from PIL import Image, ExifTags
 from datetime import datetime
 from io import BytesIO
 
+st.set_page_config(layout="wide")
+
 def process_zip(uploaded_zip):
     # メモリ内でZIPファイルを読み込み
     with zipfile.ZipFile(uploaded_zip, 'r') as zip_ref:
