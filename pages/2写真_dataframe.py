@@ -5,6 +5,7 @@ from PIL import Image
 from io import BytesIO
 import folium
 from streamlit_folium import folium_static
+import base64
 
 # 画像データをDataFrameの列に表示するための関数
 def image_to_base64(image):
