@@ -17,17 +17,29 @@ resize_factor = st.slider("リサイズの縮小率 (%)", 10, 100, 80) / 100  # 
 def resize_image(image, resize_factor):
     # EXIF情報を抽出
     exif_data = image.info.get('exif')
-    
+
     # 画像の解像度を縮小
     width, height = image.size
     new_size = (int(width * resize_factor), int(height * resize_factor))
-    image = image.resize(new_size)  # 解像度を縮小
-    
+    image = image.resize(new_size)
+
+    # JPEGとして保存するためにRGBAをRGBに変換
+    if image.mode == 'RGBA':
+        image = image.convert('RGB')
+
     # 新しいサイズの画像を保存
     buffer = BytesIO()
-    image.save(buffer, format="JPEG", exif=exif_data)  # 画質調整はしないのでqualityは指定しない
+
+    # exif_dataが存在する場合のみ設定
+    if exif_data:
+        image.save(buffer, format="JPEG", exif=exif_data)
+    else:
+        image.save(buffer, format="JPEG")
     
+    buffer.seek(0)
     return buffer
+
+
 
 # 圧縮ボタンの設置
 if st.button("圧縮を実行"):
@@ -73,47 +85,44 @@ if 'resized_file_contents' in st.session_state:
         file_name="resized_images.zip",
         mime="application/zip"
     )
+    
+# 2列のレイアウトで画像と情報を表示
+cols_per_row = 2  # 1行あたりの列数
+items = list(resized_file_contents.items())
 
-    # 画像表示用の列レイアウトを作成
-    col1, col2, col3 = st.columns([2, 2, 3])
+for i in range(0, len(items), cols_per_row):
+    cols = st.columns(cols_per_row)
     
-    with col1:
-        st.write("リサイズされた写真")
-    
-    with col2:
-        st.write("ファイル名")
-    
-    with col3:
-        st.write("ファイル容量 (KB) - 撮影時間")
-    
-    # リサイズされた画像を表示
-    for file_name, file_content in resized_file_contents.items():
-        # 画像データをPILで読み込む
-        image = Image.open(BytesIO(file_content))
-        
-        # EXIFデータから撮影時間を取得
-        exif_data = image._getexif()
-        if exif_data is not None:
-            for tag, value in exif_data.items():
-                if ExifTags.TAGS.get(tag) == 'DateTime':
-                    creation_time = value
-                    break
-            else:
-                creation_time = "撮影時間情報なし"
-        else:
-            creation_time = "EXIFデータなし"
-        
-        # 列レイアウトに画像とファイル名を表示
-        col1, col2, col3 = st.columns([2, 2, 3])
-        
-        with col1:
+    for j, (file_name, file_content) in enumerate(items[i:i + cols_per_row]):
+        with cols[j]:
+            # 画像データをPILで読み込む
+            image = Image.open(BytesIO(file_content))
+            
+            # 画像を表示
             st.image(image, use_column_width=True)
-        
-        with col2:
-            st.write(file_name)
-        
-        with col3:
+
+            # EXIFデータから撮影時間を取得
+            exif_data = image._getexif()
+            if exif_data is not None:
+                for tag, value in exif_data.items():
+                    if ExifTags.TAGS.get(tag) == 'DateTime':
+                        creation_time = value
+                        break
+                else:
+                    creation_time = "撮影時間情報なし"
+            else:
+                creation_time = "EXIFデータなし"
+            
+            # ファイルサイズの計算
             file_size = len(file_content) / 1024
+            
+            # ファイル名をクリック可能なダウンロードボタンとして表示
+            st.download_button(
+                label=f"{file_name}",
+                data=file_content,
+                file_name=file_name,
+                mime="image/jpeg"
+            )
             st.write(f"{file_size:.2f} KB - {creation_time}")
 else:
     st.write("リサイズされた画像がまだありません。")
