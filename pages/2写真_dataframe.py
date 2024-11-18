@@ -3,7 +3,8 @@ from PIL import ExifTags
 import streamlit as st
 from PIL import Image
 from io import BytesIO
-import base64
+import folium
+from streamlit_folium import folium_static
 
 # 画像データをDataFrameの列に表示するための関数
 def image_to_base64(image):
@@ -100,7 +101,22 @@ if st.button("detaframeの作成"):
     if not df.empty and 'latitude' in df.columns and 'longitude' in df.columns:
         valid_locations = df.dropna(subset=['latitude', 'longitude'])  # 緯度・経度が存在する行のみを使用
         if not valid_locations.empty:
-            st.map(valid_locations[['latitude', 'longitude']])
+            # 地図の中心を計算（平均位置に設定）
+            map_center = [valid_locations['latitude'].mean(), valid_locations['longitude'].mean()]
+            
+            # Foliumで地図作成
+            m = folium.Map(location=map_center, zoom_start=12)
+            
+            # 各地点にマーカーを追加
+            for _, row in valid_locations.iterrows():
+                folium.Marker(
+                    location=[row['latitude'], row['longitude']],
+                    popup=row.get('ファイル名', 'No File Name'),  # もしファイル名があれば、それをポップアップとして表示
+                    icon=folium.Icon(color='blue')  # 青いマーカー
+                ).add_to(m)
+            
+            # Streamlitに地図を表示
+            folium_static(m)
         else:
             st.write("有効な緯度・経度が含まれていません")
     else:
